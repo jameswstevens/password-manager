@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+        }
+        .container {
+            flex: 1;
+        }
+        .table-container {
+            flex: 1;
+            margin-left: 20px;
+        }
+        input, button {
+            margin: 5px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        /* Add this CSS rule to make the font size smaller */
+        td {
+            font-size: 12px; /* Adjust the size as needed */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Password Manager</h1>
+        <div>
+            <h2>Initialize Keychain</h2>
+            <input type="password" id="init-password" placeholder="Password">
+            <button onclick="initKeychain()">Initialize</button>
+        </div>
+        <div>
+            <h2>Set Password</h2>
+            <input type="text" id="set-name" placeholder="Domain">
+            <input type="password" id="set-value" placeholder="Password">
+            <button onclick="setPassword()">Set Password</button>
+        </div>
+        <div>
+            <h2>Get Password</h2>
+            <input type="text" id="get-name" placeholder="Domain">
+            <button onclick="getPassword()">Get Password</button>
+            <p id="get-result"></p>
+        </div>
+        <div>
+            <h2>Remove Password</h2>
+            <input type="text" id="remove-name" placeholder="Domain">
+            <button onclick="removePassword()">Remove Password</button>
+        </div>
+        <div>
+            <h2>Dump Database</h2>
+            <button onclick="dumpDatabase()">Dump</button>
+            <pre id="dump-result"></pre>
+        </div>
+        <div>
+            <h2>Load Database</h2>
+            <textarea id="load-repr" placeholder="Serialized Data"></textarea>
+            <input type="text" id="load-checksum" placeholder="Checksum">
+            <button onclick="loadDatabase()">Load</button>
+        </div>
+    </div>
+    <div class="table-container">
+        <h2>Stored Passwords</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Encrypted Key</th>
+                </tr>
+            </thead>
+            <tbody id="password-table-body">
+                <!-- Rows will be added here dynamically -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        async function initKeychain() {
+            const password = document.getElementById('init-password').value;
+            const response = await fetch('/init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            alert(await response.text());
+            updateTable();
+        }
+
+        async function setPassword() {
+            const name = document.getElementById('set-name').value;
+            const value = document.getElementById('set-value').value;
+            const response = await fetch('/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, value })
+            });
+            alert(await response.text());
+            document.getElementById('set-name').value = '';
+            document.getElementById('set-value').value = '';
+            updateTable();
+        }
+
+        async function getPassword() {
+            const name = document.getElementById('get-name').value;
+            const response = await fetch(`/get?name=${name}`);
+            const result = await response.text();
+            document.getElementById('get-result').innerText = result;
+        }
+
+        async function removePassword() {
+            const name = document.getElementById('remove-name').value;
+            const response = await fetch('/remove', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            alert(await response.text());
+            document.getElementById('remove-name').value = '';
+            updateTable();
+        }
+
+        async function dumpDatabase() {
+            const response = await fetch('/dump');
+            const result = await response.json();
+            document.getElementById('dump-result').innerText = JSON.stringify(result, null, 2);
+            updateTable();
+        }
+
+        async function loadDatabase() {
+            const password = document.getElementById('init-password').value;
+            const repr = document.getElementById('load-repr').value;
+            const trustedDataCheck = document.getElementById('load-checksum').value;
+            const response = await fetch('/load', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password, repr, trustedDataCheck })
+            });
+            alert(await response.text());
+            updateTable();
+        }
+
+        async function updateTable() {
+            const response = await fetch('/dump');
+            const result = await response.json();
+            const kvs = JSON.parse(result[0]).kvs;
+            const tableBody = document.getElementById('password-table-body');
+            tableBody.innerHTML = '';
+            for (const [domain, encryptedKey] of Object.entries(kvs)) {
+                const row = document.createElement('tr');
+                const domainCell = document.createElement('td');
+                const keyCell = document.createElement('td');
+                domainCell.textContent = domain;
+                keyCell.textContent = encryptedKey;
+                row.appendChild(domainCell);
+                row.appendChild(keyCell);
+                tableBody.appendChild(row);
+            }
+        }
+    </script>
+</body>
+</html>
