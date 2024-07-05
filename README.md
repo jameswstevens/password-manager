@@ -15,3 +15,6 @@ representation of the database in memory from which it can provide the password 
 1) Choose a master password
 2) Enter domain name and password (stores as encryptions in the keychain)
 3) Enter domain to recive password
+
+CS 2515 Project 1: Password Manager
+
